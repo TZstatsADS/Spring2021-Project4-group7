@@ -131,6 +131,7 @@ stratification = function(df, ps){
   tm_end = Sys.time()
   cat("The estimated ATE is", sum(ate_strata), "\n")
   cat("Run time is", (tm_end - tm_start), "s")
+  return(list(sum(ate_strata), (tm_end - tm_start)))
 }
 ```
 
@@ -138,11 +139,37 @@ stratification = function(df, ps){
 ### High Dimension Data Set
 
 ```{r}
-stratification(highDim, ps_high)
+strata_high = stratification(highDim, ps_high)
 ```
 
 ### Low Dimension Data Set
 
 ```{r}
-stratification(lowDim, ps_low)
+strata_low = stratification(lowDim, ps_low)
 ```
+
+
+## Performance
+
+* True ATE for High Dimension Data Set: -54.8558
+
+* True ATE for Low Dimension Data Set: 2.0901
+
+```{r}
+true_ate_high = -54.8558
+true_ate_low = 2.0901
+cat("Performance for High Dimension Data is", abs(true_ate_high - strata_high[[1]]), "\n")
+cat("Performance for Low Dimension Data is", abs(true_ate_low - strata_low[[1]]))
+```
+
+```{r}
+res = matrix(rep(NA,4), ncol = 2)
+colnames(res) = c("Performance", "Computation Efficiency")
+rownames(res) = c("High Dimension", "Low Dimension")
+res[1,1] = abs(true_ate_high - strata_high[[1]])
+res[1,2] = abs(true_ate_low - strata_low[[1]])
+res[2,1] = strata_high[[2]]
+res[2,2] = strata_low[[2]]
+res
+```
+
