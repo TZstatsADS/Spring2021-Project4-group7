@@ -164,7 +164,7 @@ cat("Performance for Low Dimension Data is", abs(true_ate_low - strata_low[[1]])
 
 ```{r}
 res = matrix(rep(NA,4), ncol = 2)
-colnames(res) = c("Performance", "Computation Efficiency")
+colnames(res) = c("Performance", "Computational Efficiency")
 rownames(res) = c("High Dimension", "Low Dimension")
 res[1,1] = abs(true_ate_high - strata_high[[1]])
 res[1,2] = abs(true_ate_low - strata_low[[1]])
