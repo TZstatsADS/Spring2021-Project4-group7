@@ -1,0 +1,54 @@
+---
+title: "Regression-Estimate"
+author: "Chuanchuan Liu"
+date: "3/30/2021"
+output: pdf_document
+---
+
+# regression estimate with no need of propensity score
+
+### load data
+```{r}
+lowDim_df <- read.csv('../data/lowDim_dataset.csv')
+highDim_df <- read.csv('../data/highDim_dataset.csv')
+```
+
+### algorithm
+```{r}
+Regression_Estimation <- function(df){
+  
+  start_time <- Sys.time()
+  
+  # regression model for control groups (A=0)
+  model0 <- glm(formula=Y~., data=subset(df[which(df$A==0),],select=-c(A)))
+  # regression model for treatment groups (A=1)
+  model1 <- glm(formula=Y~., data=subset(df[which(df$A==1),],select=-c(A)))
+  
+  X = subset(df, select=-c(Y,A)) #input data for prediction
+  
+  #prediction using model0
+  Y0 <- predict(model0, newdata=X)
+  #prediction using model1
+  Y1 <- predict(model1, newdata=X)
+  
+  # calculate ATE 
+  ATE <- mean(Y1-Y0)
+  
+  # calculate running time
+  end_time <- Sys.time()
+  running_time <- end_time - start_time
+  
+  return (list(ATE=ATE, running_time=running_time))
+}
+```
+
+### summarize
+ATE and running time for low dimension data
+```{r}
+Regression_Estimation(lowDim_df)
+```
+
+ATE and running time for high dimension data
+```{r}
+Regression_Estimation(highDim_df)
+```
