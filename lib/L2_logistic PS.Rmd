@@ -1,0 +1,121 @@
+---
+title: "PS: L2 Penalized Logistic Regression"
+output: html_notebook
+---
+
+Step 0: Set up the environment
+```{r}
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("Matching")) install.packages("Matching")
+if (!require("glmnet")) install.packages("glmnet")
+
+```
+
+```{r}
+library(Matching)
+library(glmnet)
+library(tidyverse)
+library(dplyr)
+```
+Step 1: Load Data
+
+```{r}
+lowDim <- read.csv("C:/Users/liqia/Spring2021-Project4-group-7-1-main/data/lowDim_dataset.csv")
+highDim <- read.csv("C:/Users/liqia/Spring2021-Project4-group-7-1-main/data/highDim_dataset.csv")
+```
+
+```{r}
+head(lowDim,5)
+head(highDim,5)
+```
+
+```{r}
+# Split into A, x and y
+#highDim_dataset
+highA<-highDim$A
+highY<-highDim$Y
+highX<-highDim%>% select(-Y, -A) %>% as.matrix
+
+#lowDim_dataset
+lowA<-lowDim$A
+lowY<-lowDim$Y
+lowX<-lowDim%>% select(-Y, -A) %>% as.matrix
+```
+
+step 2: L2 Penalized Logistic Regression
+
+To avoid overfitting of the logistic regression model, we introduce regularization term to decrease the model variance in the loss function Q
+
+
+```{r}
+
+
+propensity_score <- function(data){
+  set.seed(0)
+  start_time <- Sys.time()
+  A<-data$A
+  Y<-data$Y
+  X<-data%>% select(-Y, -A) %>% as.matrix
+  
+  
+  glm <- cv.glmnet(X, A, family = "binomial", alpha = 0)
+  
+  p_score <- predict(glm$glmnet.fit, 
+                      s = glm$lambda.min, 
+                      newx = as.matrix(X),
+                      type = "response")
+  
+  end_time <- Sys.time()
+  running_time = end_time - start_time
+  cat("Time for Propensity Matching data is:", running_time, "seconds.")
+  return(p_score)
+}
+```
+
+
+```{r}
+#propensity_score for lowDim_dataset
+propensity_score(lowDim)
+```
+
+```{r}
+#propensity_score for highDim_dataset
+propensity_score(highDim)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
