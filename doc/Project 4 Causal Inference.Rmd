@@ -174,15 +174,17 @@ res
 ```
 
 
-# regression estimate with no need of propensity score
+# Regression Estimate with no need of propensity score
 
-### load data
+## load data
+
 ```{r}
 lowDim_df <- read.csv('../data/lowDim_dataset.csv')
 highDim_df <- read.csv('../data/highDim_dataset.csv')
 ```
 
-### algorithm
+## algorithm
+
 ```{r}
 Regression_Estimation <- function(df){
   
@@ -211,19 +213,22 @@ Regression_Estimation <- function(df){
 }
 ```
 
-### summarize
+## summarize
+
 ATE and running time for low dimension data
+
 ```{r}
 Regression_Estimation(lowDim_df)
 ```
 
 ATE and running time for high dimension data
+
 ```{r}
 Regression_Estimation(highDim_df)
 ```
 
 
-####weighted reg
+# Weighted Regression
 
 ```{r load data}
 lowDim <- read_csv('../data/lowDim_dataset.csv')
