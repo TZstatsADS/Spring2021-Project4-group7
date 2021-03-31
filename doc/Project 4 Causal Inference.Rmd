@@ -1,0 +1,175 @@
+---
+title: "Project 4 Causal Inference"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Propensity Score
+
+Step 0: Set up the environment
+
+```{r}
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("Matching")) install.packages("Matching")
+if (!require("glmnet")) install.packages("glmnet")
+
+```
+
+```{r libraries}
+library(Matching)
+library(glmnet)
+library(tidyverse)
+```
+
+Step 1: Load Data
+
+```{r}
+lowDim <- read.csv("../data/lowDim_dataset.csv")
+highDim <- read.csv("../data/highDim_dataset.csv")
+```
+
+```{r}
+head(lowDim,5)
+head(highDim,5)
+```
+
+```{r}
+# Split into A, x and y
+#highDim_dataset
+# highA<-highDim$A
+# highY<-highDim$Y
+# highX<-highDim%>% select(-Y, -A) %>% as.matrix
+# 
+# #lowDim_dataset
+# lowA<-lowDim$A
+# lowY<-lowDim$Y
+# lowX<-lowDim%>% select(-Y, -A) %>% as.matrix
+```
+
+step 2: L2 Penalized Logistic Regression
+
+To avoid overfitting of the logistic regression model, we introduce regularization term to decrease the model variance in the loss function Q
+
+
+```{r}
+propensity_score <- function(data){
+  set.seed(0)
+  start_time <- Sys.time()
+  A<-data$A
+  Y<-data$Y
+  X<-data%>% select(-Y, -A) %>% as.matrix
+  
+  
+  glm <- cv.glmnet(X, A, family = "binomial", alpha = 0)
+  
+  p_score <- predict(glm$glmnet.fit, 
+                      s = glm$lambda.min, 
+                      newx = as.matrix(X),
+                      type = "response")
+  
+  end_time <- Sys.time()
+  running_time = end_time - start_time
+  #cat("Time for Propensity Matching Low_Dim is:", running_time, "seconds.")
+  return(p_score)
+}
+```
+
+
+```{r}
+# propensity_score(lowDim)
+# propensity_score(highDim)
+```
+
+
+
+
+# Stratification
+
+$$\hat \Delta_S = \sum_{j=1}^K \frac{N_j}{N} \{N_{1j}^{-1} \sum_{i=1}^N T_i Y_i I(\hat e_i \in \hat Q_j) - N_{0j}^{-1} \sum_{i=1}^N (1-T_i) Y_i I(\hat e_i \in \hat Q_j)\}$$
+
+## L2 Logistic Regression Propensity Score
+
+```{r}
+ps_high = propensity_score(highDim)
+ps_low = propensity_score(lowDim)
+```
+
+## Estimate Average Treatment Effect (ATE)
+
+```{r}
+K = 5 # number of strata
+q = seq(0, 1, by = 1/K) # sample quantile
+```
+
+
+```{r}
+stratification = function(df, ps){
+  tm_start = Sys.time()
+  # split into K strata
+  stratum = rep(NA, length(q))
+  for (i in 1:length(q)){
+    stratum[i] = quantile(ps, q[i])
+  }
+  # ATE
+  ate_strata = rep(NA, K)
+  for (j in 1:K){
+    # select observations whose propensity score is within (q_{j-1},q_j]
+    curr.obs = df[which(stratum[j] < ps & ps <= stratum[j+1]),]
+    
+    # subset/select treatment and control groups
+    treatment_strata = curr.obs[curr.obs$A == 1,]
+    control_strata = curr.obs[curr.obs$A == 0,]
+    
+    # calculate sum within stratum
+    treatment_sum = sum(treatment_strata$A * treatment_strata$Y) / nrow(treatment_strata)
+    control_sum = sum((1 - control_strata$A) * control_strata$Y) / nrow(control_strata)
+    ate_strata[j] = (nrow(curr.obs)/nrow(df)) * (treatment_sum - control_sum)
+  }
+  tm_end = Sys.time()
+  cat("The estimated ATE is", sum(ate_strata), "\n")
+  cat("Run time is", (tm_end - tm_start), "s")
+  return(list(sum(ate_strata), (tm_end - tm_start)))
+}
+```
+
+
+### High Dimension Data Set
+
+```{r}
+strata_high = stratification(highDim, ps_high)
+```
+
+### Low Dimension Data Set
+
+```{r}
+strata_low = stratification(lowDim, ps_low)
+```
+
+
+## Performance
+
+* True ATE for High Dimension Data Set: -54.8558
+
+* True ATE for Low Dimension Data Set: 2.0901
+
+```{r}
+true_ate_high = -54.8558
+true_ate_low = 2.0901
+cat("Performance for High Dimension Data is", abs(true_ate_high - strata_high[[1]]), "\n")
+cat("Performance for Low Dimension Data is", abs(true_ate_low - strata_low[[1]]))
+```
+
+```{r}
+res = matrix(rep(NA,4), ncol = 2)
+colnames(res) = c("Performance", "Computational Efficiency")
+rownames(res) = c("High Dimension", "Low Dimension")
+res[1,1] = abs(true_ate_high - strata_high[[1]])
+res[1,2] = abs(true_ate_low - strata_low[[1]])
+res[2,1] = strata_high[[2]]
+res[2,2] = strata_low[[2]]
+res
+```
+
