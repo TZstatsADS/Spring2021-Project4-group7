@@ -305,4 +305,22 @@ weighted_high <- lm(Y ~ Z_high, weights = wt_high)
 ATE_high <- coef(weighted_high)[2]
 ATE_high
 
+
+```
+
+```{r}
+# Estimate ATE score based on thresholds
+thresholds <- c(0.1, 0.05, 0.02, 0.01, 0.005)
+
+ate_scores <- c()
+for (t in thresholds) {
+  feature_t <- summary(model_high)$coef[,4][3:187]<t
+  Z_high_t <- as.data.frame(cbind(A_high, X_high[,feature_t]))
+  Z_high_t <- sapply(Z_high_t, as.numeric)
+  weighted_high_t <- lm(Y~Z_high_t, weights=wt_high)
+  
+  ATE_t <- coef(weighted_high_t)[2]
+  print(ATE_t)
+  append(ate_scores, ATE_t) # can calculate accuracy based on ate_scores
+}
 ```
