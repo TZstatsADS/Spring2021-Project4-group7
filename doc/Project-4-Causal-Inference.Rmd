@@ -184,14 +184,16 @@ res
 
 # Regression Estimate with no need of propensity score
 
-## load data
+### This algorithm builds regression model fit to control groups and treatment groups, and then makes predictions based on the model in order to calculate ATE.
+
+## Load Data
 
 ```{r}
 lowDim_df <- read.csv('../data/lowDim_dataset.csv')
 highDim_df <- read.csv('../data/highDim_dataset.csv')
 ```
 
-## algorithm
+## Algorithm
 
 ```{r}
 Regression_Estimation <- function(df){
@@ -223,16 +225,38 @@ Regression_Estimation <- function(df){
 
 ## summarize
 
-ATE and running time for low dimension data
-
+* ATE
 ```{r}
-Regression_Estimation(lowDim_df)
+calc_ate_low <- Regression_Estimation(lowDim_df)$ATE
+calc_ate_high <- Regression_Estimation(highDim_df)$ATE
+cat("ATE for Low Dimension Data is", calc_ate_low, "\n")
+cat("ATE for High Dimension Data is", calc_ate_high)
 ```
 
-ATE and running time for high dimension data
-
+* Running Time 
 ```{r}
-Regression_Estimation(highDim_df)
+running_time_low <- Regression_Estimation(lowDim_df)$running_time
+running_time_high <- Regression_Estimation(highDim_df)$running_time
+cat("Running Time for Low Dimension Data is", running_time_low, "sec.","\n")
+cat("Running Time for High Dimension Data is", running_time_high, "sec.")
+```
+
+* Performance
+```{r}
+true_ate_low = 2.0901
+true_ate_high = -54.8558
+performance_low <- abs(true_ate_low - calc_ate_low)
+performance_high <- abs(true_ate_high - calc_ate_high)
+cat("Performance for Low Dimension Data is", performance_low, "\n" )
+cat("Performance for High Dimension Data is", performance_high)
+```
+
+* Result
+```{r}
+RE <- matrix(c(calc_ate_high,calc_ate_low,running_time_high,running_time_low,performance_high,performance_low), ncol = 3, nrow=2)
+colnames(RE) = c("ATE","Computational Efficiency","Performance")
+rownames(RE) = c("High Dimension", "Low Dimension")
+RE
 ```
 
 
