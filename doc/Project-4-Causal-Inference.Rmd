@@ -1,5 +1,7 @@
 ---
 title: "Project 4 Causal Inference"
+#subtitle: "Group 7"
+#author: "Daizy Lam", "Qiao Li", "Chuanchuan Liu", "Yingyao Wu", "Serena Yuan"
 output: pdf_document
 ---
 
@@ -11,17 +13,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Step 0: Set up the environment
 
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 if (!require("tidyverse")) install.packages("tidyverse")
 if (!require("Matching")) install.packages("Matching")
 if (!require("glmnet")) install.packages("glmnet")
 
 ```
 
-```{r libraries}
+```{r libraries, echo=FALSE, message=FALSE, warning=FALSE}
 library(Matching)
 library(glmnet)
 library(tidyverse)
+require(methods)
 ```
 
 Step 1: Load Data
@@ -31,10 +34,6 @@ lowDim <- read.csv("../data/lowDim_dataset.csv")
 highDim <- read.csv("../data/highDim_dataset.csv")
 ```
 
-```{r}
-head(lowDim,5)
-head(highDim,5)
-```
 
 ```{r}
 # Split into A, x and y
@@ -60,14 +59,14 @@ propensity_score <- function(data){
   start_time <- Sys.time()
   A<-data$A
   Y<-data$Y
-  X<-data%>% select(-Y, -A) %>% as.matrix
+  #X<-data%>% select(-Y, -A) %>% as.matrix
   
   
-  glm <- cv.glmnet(X, A, family = "binomial", alpha = 0)
+  glm <- cv.glmnet(data.matrix(data[,-c(1,2)]), A, family = "binomial", alpha = 0)
   
   p_score <- predict(glm$glmnet.fit, 
                       s = glm$lambda.min, 
-                      newx = as.matrix(X),
+                      newx = data.matrix(data[,-c(1,2)]),
                       type = "response")
   
   end_time <- Sys.time()
@@ -76,14 +75,6 @@ propensity_score <- function(data){
   return(p_score)
 }
 ```
-
-
-```{r}
-# propensity_score(lowDim)
-# propensity_score(highDim)
-```
-
-
 
 
 # Stratification
@@ -253,14 +244,18 @@ df_hd <- highDim %>% mutate(A = factor(A))
 
 ```{r}
 #assign variables for data frame
-X_low <- df_ld %>% select(-Y, -A) %>% as.matrix
-A_low <- df_ld %>% select(A) %>% as.matrix
-X_high <- df_hd %>% select(-Y, -A) %>% as.matrix
-A_high <- df_hd %>% select(A) %>% as.matrix
+# X_low <- df_ld %>% select(-Y, -A) %>% as.matrix
+# A_low <- df_ld %>% select(A) %>% as.matrix
+# X_high <- df_hd %>% select(-Y, -A) %>% as.matrix
+# A_high <- df_hd %>% select(A) %>% as.matrix
+X_low <- data.matrix(df_ld[,-c(1,2)])
+A_low <- data.matrix(df_ld[,2])
+X_high <- data.matrix(df_hd[,-c(1,2)])
+A_high <- data.matrix(df_hd[,2])
 
 #running cv with L2
-cv_L2_low <- cv.glmnet(X_low, A_low, family = "binomial", alpha = 0)
-cv_L2_high <- cv.glmnet(X_high, A_high, family = "binomial", alpha = 0)
+#cv_L2_low <- cv.glmnet(X_low, A_low, family = "binomial", alpha = 0)
+#cv_L2_high <- cv.glmnet(X_high, A_high, family = "binomial", alpha = 0)
 ```
 
 
@@ -269,14 +264,14 @@ cv_L2_high <- cv.glmnet(X_high, A_high, family = "binomial", alpha = 0)
 Weighted_Regression <- function(X,A,df,cv, threshold){
   start_time <- Sys.time()
   #L2 to get propensity score -low 
-  L2 <- glmnet(X, A, family = "binomial",
-                 alpha = 0, lambda = cv$lambda.min)
+  #L2 <- glmnet(X, A, family = "binomial",
+  #               alpha = 0, lambda = cv$lambda.min)
   #calculate propensity score
-  propensity_score <- predict(L2, X, type = "response")
+  #propensity_score <- predict(L2, X, type = "response")
   
   # Finding weights
   t<- as.numeric(A)
-  wt<- t/(propensity_score) + (1-t)/(1-propensity_score)
+  wt<- t/(propensity_score(df)) + (1-t)/(1-propensity_score(df))
   
   # Estimate linear regression
   Y <- df$Y
