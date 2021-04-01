@@ -250,7 +250,7 @@ cv_L2_high <- cv.glmnet(X_high, A_high, family = "binomial", alpha = 0)
 
 ```{r Weighted_Regression fucntion}
 
-Weighted_Regression <- function(X,A,df,cv){
+Weighted_Regression <- function(X,A,df,cv, threshold){
   start_time <- Sys.time()
   #L2 to get propensity score -low 
   L2 <- glmnet(X, A, family = "binomial",
@@ -265,7 +265,7 @@ Weighted_Regression <- function(X,A,df,cv){
   # Estimate linear regression
   Y <- df$Y
   model<- lm(Y~., data = df)
-  feature_z <- summary(model)$coef[,4][-c(1:2)]<0.05
+  feature_z <- summary(model)$coef[,4][-c(1:2)]<threshold
   Z <- as.data.frame(cbind(A,X[,feature_z]))
   Z<-sapply(Z, as.numeric)
   
@@ -284,12 +284,40 @@ Weighted_Regression <- function(X,A,df,cv){
   
 ```
 
+# different thresholds for best ATE
 ```{r}
-Weighted_Regression_low = Weighted_Regression(X_low,A_low,df_ld,cv_L2_low)
+thresholds <- c(0.1, 0.05, 0.02, 0.01, 0.005)
+
+ate_scores_low <- c()
+ate_scores_high <- c()
+
+true_ate_high = -54.8558
+true_ate_low = 2.0901
+
+for (t in thresholds) {
+  wreg_low = Weighted_Regression(X_low, A_low, df_ld, cv_L2_low, t)
+  wreg_high = Weighted_Regression(X_high, A_high, df_hd, cv_L2_high, t)
+  diff_low = abs(true_ate_low - wreg_low[[1]])
+  diff_high = abs(true_ate_high - wreg_high[[1]])
+  append(ate_scores_low, diff_low)
+  append(ate_scores_high, diff_high)
+}
+```
+
+Set threshold to the optimal value:
+```{r}
+opt_low <- which.min(ate_scores_low)
+opt_high <- which.min(ate_scores_high)
+threshold_low <- thresholds[opt_low]
+threshold_high <- thresholds[opt_high]
 ```
 
 ```{r}
-Weighted_Regression_high = Weighted_Regression(X_high,A_high,df_hd,cv_L2_high)
+Weighted_Regression_low = Weighted_Regression(X_low,A_low,df_ld,cv_L2_low, threshold_low)
+```
+
+```{r}
+Weighted_Regression_high = Weighted_Regression(X_high,A_high,df_hd,cv_L2_high, threshold_high)
 ```
 
 ```{r}
