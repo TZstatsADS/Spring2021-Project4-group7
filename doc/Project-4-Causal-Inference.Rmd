@@ -1,8 +1,9 @@
 ---
 title: "Project 4 Causal Inference"
-#subtitle: "Group 7"
-#author: "Daizy Lam", "Qiao Li", "Chuanchuan Liu", "Yingyao Wu", "Serena Yuan"
-output: pdf_document
+subtitle: "Group 7"
+author: "Daizy Lam, Qiao Li, Chuanchuan Liu, Yingyao Wu, Serena Yuan"
+output: 
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
