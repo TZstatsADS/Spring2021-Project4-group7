@@ -18,55 +18,76 @@ df_hd <- highDim %>% mutate(A = factor(A))
 ```
 
 ```{r}
+#assign variables for data frame
 X_low <- df_ld %>% select(-Y, -A) %>% as.matrix
 A_low <- df_ld %>% select(A) %>% as.matrix
 X_high <- df_hd %>% select(-Y, -A) %>% as.matrix
 A_high <- df_hd %>% select(A) %>% as.matrix
+
+#running cv with L2
 cv_L2_low <- cv.glmnet(X_low, A_low, family = "binomial", alpha = 0)
 cv_L2_high <- cv.glmnet(X_high, A_high, family = "binomial", alpha = 0)
 ```
 
+
+```{r Weighted_Regression fucntion}
+
+Weighted_Regression <- function(X,A,df,cv){
+  start_time <- Sys.time()
+  #L2 to get propensity score -low 
+  L2 <- glmnet(X, A, family = "binomial",
+                 alpha = 0, lambda = cv$lambda.min)
+  #calculate propensity score
+  propensity_score <- predict(L2, X, type = "response")
+  
+  # Finding weights
+  t<- as.numeric(A)
+  wt<- t/(propensity_score) + (1-t)/(1-propensity_score)
+  
+  # Estimate linear regression
+  Y <- df$Y
+  model<- lm(Y~., data = df)
+  feature_z <- summary(model)$coef[,4][-c(1:2)]<0.05
+  Z <- as.data.frame(cbind(A,X[,feature_z]))
+  Z<-sapply(Z, as.numeric)
+  
+  #Weighted Regression
+  weighted_reg <- lm(Y ~ Z, weights = wt)
+  
+  #coef of T is an estimate for ATE
+  ATE<- coef(weighted_reg)[2]
+  end_time <- Sys.time()
+  running_time <- end_time - start_time
+  cat("The estimated ATE is", ATE, "\n")
+  cat("Run time is", running_time , "s")
+  return (list(ATE=ATE, running_time=running_time))
+  
+}
+  
+```
+
 ```{r}
-#L2 to get propensity score -low 
-L2_low <- glmnet(X_low, A_low, family = "binomial",
-                 alpha = 0, lambda = cv_L2$lambda.min)
-propensity_score_low <- predict(L2_low, X_low, type = "response")
-```
-
-```{r weighted regression - low dim}
-# Finding weights - low
-t<- as.numeric(A_low)
-wt_low <- t/(propensity_score_low) + (1-t)/(1-propensity_score_low)
-# Estimate linear regression - low dim:
-model_low <- lm(Y~., data = df_ld)
-feature_z_low <- summary(model_low)$coef[,4][3:24]<0.05
-Y <- df_ld$Y
-Z_low <- as.data.frame(cbind(A_low,X_low[,feature_z_low]))
-Z_low<-sapply(Z_low, as.numeric)
-weighted_low <- lm(Y ~ Z_low, weights = wt_low)
-#coef of T is an estimate for ATE
-ATE_low <- coef(weighted_low)[2]
-ATE_low
+Weighted_Regression_low = Weighted_Regression(X_low,A_low,df_ld,cv_L2_low)
 ```
 
 ```{r}
-#L2 to get propensity score - high
-L2_high <- glmnet(X_high, A_high, family = "binomial",alpha = 0, lambda = cv_L2_high$lambda.min)
-propensity_score_high <- predict(L2_high, X_high, type = "response")
+Weighted_Regression_high = Weighted_Regression(X_high,A_high,df_hd,cv_L2_high)
 ```
 
-```{r weighted regression - high dim}
-# Finding weights - high
-t<- as.numeric(A_high)
-wt_high <- t/(propensity_score_high) + (1-t)/(1-propensity_score_high)
-# Estimate linear regression - high dim:
-model_high <- lm(Y~., data = df_hd)
-feature_z_high <- summary(model_high)$coef[,4][3:187]<0.05
-Y <- df_hd$Y
-Z_high <- as.data.frame(cbind(A_high,X_high[,feature_z_high]))
-Z_high<-sapply(Z_high, as.numeric)
-weighted_high <- lm(Y ~ Z_high, weights = wt_high)
-#coef of T is an estimate for ATE
-ATE_high <- coef(weighted_high)[2]
-ATE_high
+```{r}
+true_ate_high = -54.8558
+true_ate_low = 2.0901
+cat("Performance for High Dimension Data is", abs(true_ate_high - Weighted_Regression_high[[1]]), "\n")
+cat("Performance for Low Dimension Data is", abs(true_ate_low -Weighted_Regression_low[[1]]))
+```
+
+```{r}
+res = matrix(rep(NA,4), ncol = 2)
+colnames(res) = c("Performance", "Computational Efficiency")
+rownames(res) = c("High Dimension", "Low Dimension")
+res[1,1] = abs(true_ate_high - Weighted_Regression_high[[1]])
+res[1,2] = abs(true_ate_low - Weighted_Regression_low[[1]])
+res[2,1] = Weighted_Regression_high[[2]]
+res[2,2] = Weighted_Regression_low[[2]]
+res
 ```
