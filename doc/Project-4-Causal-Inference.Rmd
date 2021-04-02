@@ -10,6 +10,12 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Introduction
+
+In this project,our goal is to compare Regression Estimate, Stratification, and Weighted Regression where PS is based on L2 penalized logistic regression.
+We implement and evaluate these three causal inference algorithms on treatment datasets (low dimensional/ high dimensional).
+ATE estimation is used to evaluate and compare the efficiency of the causal inference algorithms.
+
 # Propensity Score
 
 Step 0: Set up the environment
