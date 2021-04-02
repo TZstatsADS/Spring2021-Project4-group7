@@ -35,20 +35,6 @@ lowDim <- read.csv("../data/lowDim_dataset.csv")
 highDim <- read.csv("../data/highDim_dataset.csv")
 ```
 
-
-```{r}
-# Split into A, x and y
-#highDim_dataset
-# highA<-highDim$A
-# highY<-highDim$Y
-# highX<-highDim%>% select(-Y, -A) %>% as.matrix
-# 
-# #lowDim_dataset
-# lowA<-lowDim$A
-# lowY<-lowDim$Y
-# lowX<-lowDim%>% select(-Y, -A) %>% as.matrix
-```
-
 step 2: L2 Penalized Logistic Regression
 
 The logistic regression model represents the class-conditional probabilities through a linear function of the predictors:
