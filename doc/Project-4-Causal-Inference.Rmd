@@ -50,6 +50,13 @@ $$Q=-\frac{1}{n}\sum[y_i(\beta_0+\beta_1x_1+...+\beta_px_p)+log(1+\exp(\beta_0+\
 
 ```{r}
 propensity_score <- function(data){
+  #L2 penalized logistic regression was used to estimate propensity scores
+  #Input:
+  #data - the dataframe we want to evaluate
+  #Return:
+  #p_score - propensity score
+  #Run time for calculating p_score
+  
   set.seed(0)
   start_time <- Sys.time()
   A<-data$A
