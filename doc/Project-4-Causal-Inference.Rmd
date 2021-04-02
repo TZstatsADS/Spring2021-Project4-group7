@@ -12,19 +12,25 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Propensity Score
+# Introduction
 
-Step 0: Set up the environment
+In this project,our goal is to compare Regression Estimate, Stratification, and Weighted Regression where PS is based on L2 penalized logistic regression.
+
+We implement and evaluate these three causal inference algorithms on treatment datasets (low dimensional/ high dimensional).
+
+ATE estimation is used to evaluate and compare the efficiency of the causal inference algorithms.
+
+
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 if (!require("tidyverse")) install.packages("tidyverse")
-if (!require("Matching")) install.packages("Matching")
 if (!require("glmnet")) install.packages("glmnet")
-
+if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("ggthemes")) install.packages("ggthemes")
+if (!require("gridExtra")) install.packages("gridExtra")
 ```
 
 ```{r libraries, echo=FALSE, message=FALSE, warning=FALSE}
-library(Matching)
 library(glmnet)
 library(tidyverse)
 library(ggplot2)
@@ -32,7 +38,7 @@ library(ggthemes)
 library(gridExtra)
 ```
 
-Step 1: Load Data
+# Load Data
 
 ```{r}
 lowDim <- read.csv("../data/lowDim_dataset.csv")
@@ -40,32 +46,111 @@ highDim <- read.csv("../data/highDim_dataset.csv")
 ```
 
 
+# Regression Estimate (with no need of propensity score)
+
+This algorithm builds regression model fit to control groups and treatment groups, and then makes predictions based on the model in order to calculate ATE.
+
+
+## Algorithm
+
 ```{r}
-# Split into A, x and y
-#highDim_dataset
-# highA<-highDim$A
-# highY<-highDim$Y
-# highX<-highDim%>% select(-Y, -A) %>% as.matrix
-# 
-# #lowDim_dataset
-# lowA<-lowDim$A
-# lowY<-lowDim$Y
-# lowX<-lowDim%>% select(-Y, -A) %>% as.matrix
+Regression_Estimation <- function(df){
+  
+  start_time <- Sys.time()
+  
+  # regression model for control groups (A=0)
+  model0 <- glm(formula=Y~., data=subset(df[which(df$A==0),],select=-c(A)))
+  # regression model for treatment groups (A=1)
+  model1 <- glm(formula=Y~., data=subset(df[which(df$A==1),],select=-c(A)))
+  
+  X = subset(df, select=-c(Y,A)) #input data for prediction
+  
+  #prediction using model0
+  Y0 <- predict(model0, newdata=X)
+  #prediction using model1
+  Y1 <- predict(model1, newdata=X)
+  
+  # calculate ATE 
+  ATE <- mean(Y1-Y0)
+  
+  # calculate running time
+  end_time <- Sys.time()
+  running_time <- end_time - start_time
+  
+  return (list(ATE=ATE, running_time=running_time))
+}
 ```
 
-step 2: L2 Penalized Logistic Regression
+## Summarize
 
-To avoid overfitting of the logistic regression model, we introduce regularization term to decrease the model variance in the loss function Q
+* ATE
 
+```{r}
+calc_ate_low <- Regression_Estimation(lowDim)$ATE
+calc_ate_high <- Regression_Estimation(highDim)$ATE
+cat("ATE for Low Dimension Data is", calc_ate_low, "\n")
+cat("ATE for High Dimension Data is", calc_ate_high)
+```
+
+* Running Time
+
+```{r}
+running_time_low <- Regression_Estimation(lowDim)$running_time
+running_time_high <- Regression_Estimation(highDim)$running_time
+cat("Running Time for Low Dimension Data is", running_time_low, "sec.","\n")
+cat("Running Time for High Dimension Data is", running_time_high, "sec.")
+```
+
+* Performance
+
+```{r}
+true_ate_low = 2.0901
+true_ate_high = -54.8558
+performance_low <- abs(true_ate_low - calc_ate_low)
+performance_high <- abs(true_ate_high - calc_ate_high)
+cat("Performance for Low Dimension Data is", performance_low, "\n" )
+cat("Performance for High Dimension Data is", performance_high)
+```
+
+* Result
+
+```{r}
+RE <- matrix(c(calc_ate_high,calc_ate_low,running_time_high,running_time_low,performance_high,performance_low), ncol = 3, nrow=2)
+colnames(RE) = c("ATE","Computational Efficiency","Performance")
+rownames(RE) = c("High Dimension", "Low Dimension")
+RE
+```
+
+
+
+# Propensity Score
+
+## L2 Penalized Logistic Regression
+
+The logistic regression model represents the class-conditional probabilities through a linear function of the predictors:
+
+$$logit[Pr(T=1|X)]=\beta_0+\beta_1x_1+\cdots+\beta_px_p$$
+
+$$Pr(T=1|X)=\frac{1}{1+e^{-(\beta_0+\beta_1x_1+\cdots+\beta_px_p)}}$$
+
+To avoid overfitting of the logistic regression model, we introduce regularization term to decrease the model variance in the loss function Q. 
+
+In order to achieve this, we modifying the loss function with a penalty term which effectively shrinks the estimates of the coefficients. The regularization term is the "L2 norm":
+
+$$Q=-\frac{1}{n}\sum[y_i(\beta_0+\beta_1x_1+...+\beta_px_p)+log(1+\exp(\beta_0+\beta_1x_1+...+\beta_px_p))]+\lambda\sum\beta_j^2$$
 
 ```{r}
 propensity_score <- function(data){
+  #L2 penalized logistic regression was used to estimate propensity scores
+  #Input:
+  #data - the dataframe we want to evaluate
+  #Return:
+  #p_score - propensity score
+  #Run time for calculating p_score
   set.seed(0)
   start_time <- Sys.time()
   A<-data$A
   Y<-data$Y
-  #X<-data%>% select(-Y, -A) %>% as.matrix
-  
   
   glm <- cv.glmnet(data.matrix(data[,-c(1,2)]), A, family = "binomial", alpha = 0)
   
@@ -76,10 +161,18 @@ propensity_score <- function(data){
   
   end_time <- Sys.time()
   running_time = end_time - start_time
-  #cat("Time for Propensity Matching Low_Dim is:", running_time, "seconds.")
   return(p_score)
 }
 ```
+
+## Propensity Scores
+
+```{r}
+ps_high = propensity_score(highDim)
+ps_low = propensity_score(lowDim)
+```
+
+
 
 
 # Stratification
@@ -91,13 +184,6 @@ We will estimate the Average Treatment Effect (ATE) using stratification based o
 $$\hat \Delta_S = \sum_{j=1}^K \frac{N_j}{N} \{N_{1j}^{-1} \sum_{i=1}^N T_i Y_i I(\hat e_i \in \hat Q_j) - N_{0j}^{-1} \sum_{i=1}^N (1-T_i) Y_i I(\hat e_i \in \hat Q_j)\}$$
 
 where K is the number of strata, $N_j$ is the number of individuals in stratum j, $N_{1j}$ is the number of "treated" individuals in stratum j and $N_{0j}$ is the number of "controlled" individuals in stratum j. $\hat Q_j = (\hat q_{j-1}, q_j]$ is the interval from (j-1)th sample quantile to jth sample quantile of the estimated propensity scores. (Lunceford and Davidian, 2004)
-
-## L2 Logistic Regression Propensity Score
-
-```{r}
-ps_high = propensity_score(highDim)
-ps_low = propensity_score(lowDim)
-```
 
 ## Estimate Average Treatment Effect (ATE)
 
@@ -186,118 +272,39 @@ res
 ```
 
 
-# Regression Estimate with no need of propensity score
-
-### This algorithm builds regression model fit to control groups and treatment groups, and then makes predictions based on the model in order to calculate ATE.
-
-## Load Data
-
-```{r}
-lowDim_df <- read.csv('../data/lowDim_dataset.csv')
-highDim_df <- read.csv('../data/highDim_dataset.csv')
-```
-
-## Algorithm
-
-```{r}
-Regression_Estimation <- function(df){
-  
-  start_time <- Sys.time()
-  
-  # regression model for control groups (A=0)
-  model0 <- glm(formula=Y~., data=subset(df[which(df$A==0),],select=-c(A)))
-  # regression model for treatment groups (A=1)
-  model1 <- glm(formula=Y~., data=subset(df[which(df$A==1),],select=-c(A)))
-  
-  X = subset(df, select=-c(Y,A)) #input data for prediction
-  
-  #prediction using model0
-  Y0 <- predict(model0, newdata=X)
-  #prediction using model1
-  Y1 <- predict(model1, newdata=X)
-  
-  # calculate ATE 
-  ATE <- mean(Y1-Y0)
-  
-  # calculate running time
-  end_time <- Sys.time()
-  running_time <- end_time - start_time
-  
-  return (list(ATE=ATE, running_time=running_time))
-}
-```
-
-## summarize
-
-* ATE
-```{r}
-calc_ate_low <- Regression_Estimation(lowDim_df)$ATE
-calc_ate_high <- Regression_Estimation(highDim_df)$ATE
-cat("ATE for Low Dimension Data is", calc_ate_low, "\n")
-cat("ATE for High Dimension Data is", calc_ate_high)
-```
-
-* Running Time 
-```{r}
-running_time_low <- Regression_Estimation(lowDim_df)$running_time
-running_time_high <- Regression_Estimation(highDim_df)$running_time
-cat("Running Time for Low Dimension Data is", running_time_low, "sec.","\n")
-cat("Running Time for High Dimension Data is", running_time_high, "sec.")
-```
-
-* Performance
-```{r}
-true_ate_low = 2.0901
-true_ate_high = -54.8558
-performance_low <- abs(true_ate_low - calc_ate_low)
-performance_high <- abs(true_ate_high - calc_ate_high)
-cat("Performance for Low Dimension Data is", performance_low, "\n" )
-cat("Performance for High Dimension Data is", performance_high)
-```
-
-* Result
-```{r}
-RE <- matrix(c(calc_ate_high,calc_ate_low,running_time_high,running_time_low,performance_high,performance_low), ncol = 3, nrow=2)
-colnames(RE) = c("ATE","Computational Efficiency","Performance")
-rownames(RE) = c("High Dimension", "Low Dimension")
-RE
-```
 
 
 # Weighted Regression
 
-```{r prep data reg estimate}
-df_ld <- lowDim %>% mutate(A = factor(A))
-df_hd <- highDim %>% mutate(A = factor(A))
-```
+Weighted least square estimation of regression function:
+
+$$Y_i= \alpha_0 + \tau \cdot T_i + \alpha_1' \cdot Z_i + \alpha_2' (Z_i - \bar{Z}) \cdot T_i + \epsilon_i$$
+
+where the weights are of inverse propensity weighting.
+
+$Z_i$ are a subset of covariates $X_i$ with sample average $\bar{Z}$, and $\tau$ is an estimate for ATE.
+
+We will use the following method to select Z.
+
+Estimate linear regressions $Y_i = \beta_{k 0} + \beta_{k 1} T_i + \beta_{k 2} \cdot X_{ik} + \epsilon_i$
+
+The weights are given by $\hat{\omega}(t,x) = \frac{t}{\hat{e}(x)} + \frac{1-t}{1- \hat{e}(x)}$.
+
+Then estimate $K$ linear regressions of type $Y_i = \beta_{k0} + \beta_{k1} \cdot T_i + \beta_{k 2} \cdot X_{ik} + \epsilon_i$ and then calculate the t-statistic for the test of null hypothesis that the slope $\beta_{k2}$is equal to zero. We select the subset where the t-statistic is significant. So select for $Z$ all covariates with a t-statistic which is larger in absolute value than $t_{reg}$. Then, in the final regression, include all covariates in this subset, and use the weights as the values $\hat{\omega}(t,x)$.
+
 
 ```{r}
 #assign variables for data frame
-# X_low <- df_ld %>% select(-Y, -A) %>% as.matrix
-# A_low <- df_ld %>% select(A) %>% as.matrix
-# X_high <- df_hd %>% select(-Y, -A) %>% as.matrix
-# A_high <- df_hd %>% select(A) %>% as.matrix
-X_low <- data.matrix(df_ld[,-c(1,2)])
-A_low <- data.matrix(df_ld[,2])
-X_high <- data.matrix(df_hd[,-c(1,2)])
-A_high <- data.matrix(df_hd[,2])
-
-#running cv with L2
-#cv_L2_low <- cv.glmnet(X_low, A_low, family = "binomial", alpha = 0)
-#cv_L2_high <- cv.glmnet(X_high, A_high, family = "binomial", alpha = 0)
+X_low <- data.matrix(lowDim[,-c(1,2)])
+A_low <- data.matrix(lowDim[,2])
+X_high <- data.matrix(highDim[,-c(1,2)])
+A_high <- data.matrix(highDim[,2])
 ```
 
 
 ```{r Weighted_Regression fucntion}
-
-Weighted_Regression <- function(X,A,df,cv, threshold){
+Weighted_Regression <- function(X,A,df, threshold){
   start_time <- Sys.time()
-  #L2 to get propensity score -low 
-  #L2 <- glmnet(X, A, family = "binomial",
-  #               alpha = 0, lambda = cv$lambda.min)
-  #calculate propensity score
-  #propensity_score <- predict(L2, X, type = "response")
-  
   # Finding weights
   t<- as.numeric(A)
   wt<- t/(propensity_score(df)) + (1-t)/(1-propensity_score(df))
@@ -317,11 +324,10 @@ Weighted_Regression <- function(X,A,df,cv, threshold){
   end_time <- Sys.time()
   running_time <- end_time - start_time
   cat("The estimated ATE is", ATE, "\n")
-  cat("Run time is", running_time , "s")
+  cat("Run time is", running_time , "s \n")
   return (list(ATE=ATE, running_time=running_time))
   
 }
-  
 ```
 
 # Different Thresholds for Best ATE
@@ -329,23 +335,26 @@ Weighted_Regression <- function(X,A,df,cv, threshold){
 ```{r}
 thresholds <- c(0.1, 0.05, 0.02, 0.01, 0.005)
 
-ate_scores_low <- c()
-ate_scores_high <- c()
+ate_scores_low <- rep(NA,length(thresholds))
+ate_scores_high <- rep(NA,length(thresholds))
 
 true_ate_high = -54.8558
 true_ate_low = 2.0901
 
+count = 1
 for (t in thresholds) {
-  wreg_low = Weighted_Regression(X_low, A_low, df_ld, cv_L2_low, t)
-  wreg_high = Weighted_Regression(X_high, A_high, df_hd, cv_L2_high, t)
+  wreg_low = Weighted_Regression(X_low, A_low, lowDim, t)
+  wreg_high = Weighted_Regression(X_high, A_high, highDim, t)
   diff_low = abs(true_ate_low - wreg_low[[1]])
   diff_high = abs(true_ate_high - wreg_high[[1]])
-  append(ate_scores_low, diff_low)
-  append(ate_scores_high, diff_high)
+  ate_scores_low[count] = diff_low
+  ate_scores_high[count] = diff_high
+  count = count + 1
 }
 ```
 
 Set threshold to the optimal value:
+
 ```{r}
 opt_low <- which.min(ate_scores_low)
 opt_high <- which.min(ate_scores_high)
@@ -354,11 +363,11 @@ threshold_high <- thresholds[opt_high]
 ```
 
 ```{r}
-Weighted_Regression_low = Weighted_Regression(X_low,A_low,df_ld,cv_L2_low, threshold_low)
+Weighted_Regression_low = Weighted_Regression(X_low,A_low,lowDim,threshold_low)
 ```
 
 ```{r}
-Weighted_Regression_high = Weighted_Regression(X_high,A_high,df_hd,cv_L2_high, threshold_high)
+Weighted_Regression_high = Weighted_Regression(X_high,A_high,highDim, threshold_high)
 ```
 
 ```{r}
@@ -389,52 +398,72 @@ Computational Efficiency: run time in seconds
 **High Dimension Dataset**
 
 ```{r}
-high = matrix(rep(NA,6), nrow = 3)
+high = matrix(rep(NA,9), nrow = 3)
 rownames(high) = c("Stratification", "Regression Estimate", "Weighted Regression")
-colnames(high) = c("Performance", "Computational Efficiency")
+colnames(high) = c("ATE", "Performance", "Computational Efficiency")
 # stratification
-high[1,1] = abs(true_ate_high - strata_high[[1]])
-high[1,2] = strata_high[[2]]
+high[1,1] = strata_high[[1]]
+high[1,2] = abs(true_ate_high - strata_high[[1]])
+high[1,3] = strata_high[[2]]
 # regression estimate
+high[2,1] = calc_ate_high
+high[2,2] = performance_high
+high[2,3] = running_time_high
 # weighted regression
+high[3,1] = Weighted_Regression_high[[1]]
+high[3,2] = abs(true_ate_high - Weighted_Regression_high[[1]])
+high[3,3] = Weighted_Regression_high[[2]]
+
 high
 ```
 
 
-**Low DimensionDataset**
+**Low Dimension Dataset**
 
 ```{r}
-low = matrix(rep(NA,6), nrow = 3)
+low = matrix(rep(NA,9), nrow = 3)
 rownames(low) = c("Stratification", "Regression Estimate", "Weighted Regression")
-colnames(low) = c("Performance", "Computational Efficiency")
+colnames(low) = c("ATE", "Performance", "Computational Efficiency")
 # stratification
-low[1,1] = abs(true_ate_low - strata_low[[1]])
-low[1,2] = strata_low[[2]]
+low[1,1] = strata_low[[1]]
+low[1,2] = abs(true_ate_low - strata_low[[1]])
+low[1,3] = strata_low[[2]]
 # regression estimate
+low[2,1] = calc_ate_low
+low[2,2] = performance_low
+low[2,3] = running_time_low
 # weighted regression
+low[3,1] = Weighted_Regression_low[[1]]
+low[3,2] = abs(true_ate_low - Weighted_Regression_low[[1]])
+low[3,3] = Weighted_Regression_low[[2]]
+
 low
 ```
 
 
-```{r}
+```{r, fig.width=6, fig.height=2}
 high_perf = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
-                       Performance = c(round(abs(true_ate_high - strata_high[[1]]), 3), 1, 1))
+                       Performance = c(round(abs(true_ate_high - strata_high[[1]]), 3), 
+                                       round(performance_high, 3), 
+                                       round(abs(true_ate_high - Weighted_Regression_high[[1]]), 3)))
 high_time = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
-                       Time = c(as.numeric(round(strata_high[[2]], 3)), 0.1, 0.1))
+                       Time = c(as.numeric(round(strata_high[[2]], 3)), 
+                                round(running_time_high, 3), 
+                                as.numeric(round(Weighted_Regression_high[[2]], 3))))
 
 hp = ggplot(high_perf, aes(x = Model, y = Performance)) +
-  geom_bar(stat = "identity", fill = "light blue") +
+  geom_bar(stat = "identity", fill = c("light blue","orange","light blue")) +
   geom_text(aes(label=Performance), vjust = -0.5, size = 3.5) +
   labs(title = "Performance on High Dimension Data", y = "Absolute Error") +
   #ylim(c(0,5)) +
   theme_clean()
 ht = ggplot(high_time, aes(x = Model, y = Time)) +
-  geom_bar(stat = "identity", fill = "light blue") +
+  geom_bar(stat = "identity", fill = c("light blue","orange","light blue")) +
   geom_text(aes(label=Time), vjust = -0.5, size = 3.5) +
   labs(title = "Computational Efficiency on High Dimension Data", y = "Run Time (in seconds)") +
   #ylim(c(0,0.2)) +
   theme_clean()
-grid.arrange(hp, ht, nrow=2)
+grid.arrange(hp, ht, ncol=2)
 
 # par(mfrow = c(1,2))
 # barplot(high_perf$Performance,
@@ -448,28 +477,31 @@ grid.arrange(hp, ht, nrow=2)
 ```
 
 
-```{r}
+```{r, fig.width=6, fig.height=2}
 low_perf = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
-                       Performance = c(round(abs(true_ate_low - strata_low[[1]]), 3), 1, 1))
+                       Performance = c(round(abs(true_ate_low - strata_low[[1]]), 3), 
+                                       round(performance_low, 3), 
+                                       round(abs(true_ate_low - Weighted_Regression_low[[1]]), 3)))
 low_time = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
-                       Time = c(as.numeric(round(strata_low[[2]], 3)), 0.1, 0.1))
+                       Time = c(as.numeric(round(strata_low[[2]], 3)), 
+                                round(running_time_low, 3), 
+                                as.numeric(round(Weighted_Regression_low[[2]], 3))))
 
 lp = ggplot(low_perf, aes(x = Model, y = Performance)) +
-  geom_bar(stat = "identity", fill = "light blue") +
+  geom_bar(stat = "identity", fill = c("light blue","orange","light blue")) +
   geom_text(aes(label=Performance), vjust = -0.5, size = 3.5) +
   labs(title = "Performance on Low Dimension Data", y = "Absolute Error") +
   #ylim(c(0,1)) +
   theme_clean()
 lt = ggplot(low_time, aes(x = Model, y = Time)) +
-  geom_bar(stat = "identity", fill = "light blue") +
+  geom_bar(stat = "identity", fill = c("light blue","orange","light blue")) +
   geom_text(aes(label=Time), vjust = -0.5, size = 3.5) +
   labs(title = "Computational Efficiency on Low Dimension Data", y = "Run Time (in seconds)") +
   #ylim(c(0,0.2)) +
   theme_clean()
-lp
-lt
-#grid.arrange(lp, lt, nrow=2)
+grid.arrange(lp, lt, ncol=2)
 ```
+
 
 
 # References
