@@ -1,9 +1,11 @@
 ---
 title: "Project 4 Causal Inference"
-subtitle: "Group 7"
 author: "Daizy Lam, Qiao Li, Chuanchuan Liu, Yingyao Wu, Serena Yuan"
-output: 
+subtitle: Group 7
+output:
   pdf_document: default
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -25,7 +27,9 @@ if (!require("glmnet")) install.packages("glmnet")
 library(Matching)
 library(glmnet)
 library(tidyverse)
-require(methods)
+library(ggplot2)
+library(ggthemes)
+library(gridExtra)
 ```
 
 Step 1: Load Data
@@ -373,6 +377,98 @@ res[1,2] = abs(true_ate_low - Weighted_Regression_low[[1]])
 res[2,1] = Weighted_Regression_high[[2]]
 res[2,2] = Weighted_Regression_low[[2]]
 res
+```
+
+
+# Model Comparison
+
+Performance: absolute error of the true and estimated ATE
+
+Computational Efficiency: run time in seconds
+
+**High Dimension Dataset**
+
+```{r}
+high = matrix(rep(NA,6), nrow = 3)
+rownames(high) = c("Stratification", "Regression Estimate", "Weighted Regression")
+colnames(high) = c("Performance", "Computational Efficiency")
+# stratification
+high[1,1] = abs(true_ate_high - strata_high[[1]])
+high[1,2] = strata_high[[2]]
+# regression estimate
+# weighted regression
+high
+```
+
+
+**Low DimensionDataset**
+
+```{r}
+low = matrix(rep(NA,6), nrow = 3)
+rownames(low) = c("Stratification", "Regression Estimate", "Weighted Regression")
+colnames(low) = c("Performance", "Computational Efficiency")
+# stratification
+low[1,1] = abs(true_ate_low - strata_low[[1]])
+low[1,2] = strata_low[[2]]
+# regression estimate
+# weighted regression
+low
+```
+
+
+```{r}
+high_perf = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
+                       Performance = c(round(abs(true_ate_high - strata_high[[1]]), 3), 1, 1))
+high_time = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
+                       Time = c(as.numeric(round(strata_high[[2]], 3)), 0.1, 0.1))
+
+hp = ggplot(high_perf, aes(x = Model, y = Performance)) +
+  geom_bar(stat = "identity", fill = "light blue") +
+  geom_text(aes(label=Performance), vjust = -0.5, size = 3.5) +
+  labs(title = "Performance on High Dimension Data", y = "Absolute Error") +
+  #ylim(c(0,5)) +
+  theme_clean()
+ht = ggplot(high_time, aes(x = Model, y = Time)) +
+  geom_bar(stat = "identity", fill = "light blue") +
+  geom_text(aes(label=Time), vjust = -0.5, size = 3.5) +
+  labs(title = "Computational Efficiency on High Dimension Data", y = "Run Time (in seconds)") +
+  #ylim(c(0,0.2)) +
+  theme_clean()
+grid.arrange(hp, ht, nrow=2)
+
+# par(mfrow = c(1,2))
+# barplot(high_perf$Performance,
+#      main = "Performance on High Dimension Data",
+#      names.arg = high_perf$Model,
+#      ylab = "Absolute Error")
+# barplot(high_time$Time,  
+#      main = "Computational Efficiency on High Dimension Data", 
+#      names.arg = high_perf$Model,
+#      ylab = "Run Time (in seconds)")
+```
+
+
+```{r}
+low_perf = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
+                       Performance = c(round(abs(true_ate_low - strata_low[[1]]), 3), 1, 1))
+low_time = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
+                       Time = c(as.numeric(round(strata_low[[2]], 3)), 0.1, 0.1))
+
+lp = ggplot(low_perf, aes(x = Model, y = Performance)) +
+  geom_bar(stat = "identity", fill = "light blue") +
+  geom_text(aes(label=Performance), vjust = -0.5, size = 3.5) +
+  labs(title = "Performance on Low Dimension Data", y = "Absolute Error") +
+  #ylim(c(0,1)) +
+  theme_clean()
+lt = ggplot(low_time, aes(x = Model, y = Time)) +
+  geom_bar(stat = "identity", fill = "light blue") +
+  geom_text(aes(label=Time), vjust = -0.5, size = 3.5) +
+  labs(title = "Computational Efficiency on Low Dimension Data", y = "Run Time (in seconds)") +
+  #ylim(c(0,0.2)) +
+  theme_clean()
+lp
+lt
+#grid.arrange(lp, lt, nrow=2)
 ```
 
 
