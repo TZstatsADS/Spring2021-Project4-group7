@@ -12,17 +12,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Introduction
-
-In this project,our goal is to compare Regression Estimate, Stratification, and Weighted Regression where PS is based on L2 penalized logistic regression.
-
-We implement and evaluate these three causal inference algorithms on treatment datasets (low dimensional/ high dimensional).
-
-ATE estimation is used to evaluate and compare the efficiency of the causal inference algorithms.
-
-
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
+```{r installations, echo=FALSE, message=FALSE, warning=FALSE}
 if (!require("tidyverse")) install.packages("tidyverse")
 if (!require("glmnet")) install.packages("glmnet")
 if (!require("ggplot2")) install.packages("ggplot2")
@@ -38,22 +28,34 @@ library(ggthemes)
 library(gridExtra)
 ```
 
+# Introduction
+
+In this project,our goal is to compare Regression Estimate, Stratification, and Weighted Regression where PS is based on L2 penalized logistic regression.
+
+We implement and evaluate these three causal inference algorithms on treatment datasets (low dimensional/ high dimensional).
+
+ATE estimation is used to evaluate and compare the efficiency of the causal inference algorithms.
+
+\bigskip
+
 # Load Data
 
-```{r}
+```{r data}
 lowDim <- read.csv("../data/lowDim_dataset.csv")
 highDim <- read.csv("../data/highDim_dataset.csv")
 ```
 
+\bigskip
 
 # Regression Estimate (with no need of propensity score)
 
 This algorithm builds regression model fit to control groups and treatment groups, and then makes predictions based on the model in order to calculate ATE.
 
+\medskip
 
 ## Algorithm
 
-```{r}
+```{r regression_estimation}
 Regression_Estimation <- function(df){
   
   start_time <- Sys.time()
@@ -85,25 +87,29 @@ Regression_Estimation <- function(df){
 
 * ATE
 
-```{r}
+```{r ate_re}
 calc_ate_low <- Regression_Estimation(lowDim)$ATE
 calc_ate_high <- Regression_Estimation(highDim)$ATE
 cat("ATE for Low Dimension Data is", calc_ate_low, "\n")
 cat("ATE for High Dimension Data is", calc_ate_high)
 ```
 
+\medskip
+
 * Running Time
 
-```{r}
+```{r run_time_re}
 running_time_low <- Regression_Estimation(lowDim)$running_time
 running_time_high <- Regression_Estimation(highDim)$running_time
 cat("Running Time for Low Dimension Data is", running_time_low, "sec.","\n")
 cat("Running Time for High Dimension Data is", running_time_high, "sec.")
 ```
 
+\medskip
+
 * Performance
 
-```{r}
+```{r performance_re}
 true_ate_low = 2.0901
 true_ate_high = -54.8558
 performance_low <- abs(true_ate_low - calc_ate_low)
@@ -112,16 +118,21 @@ cat("Performance for Low Dimension Data is", performance_low, "\n" )
 cat("Performance for High Dimension Data is", performance_high)
 ```
 
+\medskip
+
 * Result
 
-```{r}
-RE <- matrix(c(calc_ate_high,calc_ate_low,running_time_high,running_time_low,performance_high,performance_low), ncol = 3, nrow=2)
+```{r result_re}
+RE <- matrix(c(calc_ate_high,calc_ate_low,
+               running_time_high,running_time_low,
+               performance_high,performance_low), 
+             ncol = 3, nrow=2)
 colnames(RE) = c("ATE","Computational Efficiency","Performance")
 rownames(RE) = c("High Dimension", "Low Dimension")
 RE
 ```
 
-
+\bigskip
 
 # Propensity Score
 
@@ -139,7 +150,9 @@ In order to achieve this, we modifying the loss function with a penalty term whi
 
 $$Q=-\frac{1}{n}\sum[y_i(\beta_0+\beta_1x_1+...+\beta_px_p)+log(1+\exp(\beta_0+\beta_1x_1+...+\beta_px_p))]+\lambda\sum\beta_j^2$$
 
-```{r}
+\medskip
+
+```{r propensity_score}
 propensity_score <- function(data){
   #L2 penalized logistic regression was used to estimate propensity scores
   #Input:
@@ -167,13 +180,13 @@ propensity_score <- function(data){
 
 ## Propensity Scores
 
-```{r}
+```{r scores}
 ps_high = propensity_score(highDim)
 ps_low = propensity_score(lowDim)
 ```
 
 
-
+\bigskip
 
 # Stratification
 
@@ -185,22 +198,27 @@ $$\hat \Delta_S = \sum_{j=1}^K \frac{N_j}{N} \{N_{1j}^{-1} \sum_{i=1}^N T_i Y_i 
 
 where K is the number of strata, $N_j$ is the number of individuals in stratum j, $N_{1j}$ is the number of "treated" individuals in stratum j and $N_{0j}$ is the number of "controlled" individuals in stratum j. $\hat Q_j = (\hat q_{j-1}, q_j]$ is the interval from (j-1)th sample quantile to jth sample quantile of the estimated propensity scores. (Lunceford and Davidian, 2004)
 
+\medskip
+
 ## Estimate Average Treatment Effect (ATE)
 
 We first determine the number of strata K and create equally spaced intervals starting from 0 to 1. In the example below we are using K = 5, and the resulting intervals would be (0, 0.2, 0.4, 0.6, 0.8, 1).
 
+Then we form K strata according to the sample quantiles of the $\hat e_i$ (estimated propensity scores), i = 1, ..., N (sample size/number of observations), where the jth sample quantile $\hat q_j$, for j = 1, ..., K, is such that the proportion of $\hat e_i \leq \hat q_j$ is roughly j/K, $\hat q_0 = 0$ and $\hat q_K = 1$. (Lunceford and Davidian, 2004)
+
+\medskip
+
 ```{r stratification_setup}
 K = 5 # number of strata
-q = seq(0, 1, by = 1/K) # sample quantile
+q = seq(0, 1, by = 1/K) # sample quantiles to be constructed below
 ```
 
 
-Then we form K strata according to the sample quantiles of the $\hat e_i$ (estimated propensity scores), i = 1, ..., N (sample size/number of observations), where the jth sample quantile $\hat q_j$, for j = 1, ..., K, is such that the proportion of $\hat e_i \leq \hat q_j$ is roughly j/K, $\hat q_0 = 0$ and $\hat q_K = 1$. (Lunceford and Davidian, 2004)
+Within each stratum, we subset the observations for the specific strata, i.e. observations whose propensity scores fall in the interval $(q_{j-1},q_j]$ for the jth strata. We then split the subsetted data set into "treated" and "controlled" groups using the binary treatment indicator 'A', and calculate a weighted sum of the outcome 'Y' for each group within the stratum.
 
-Within each stratum, we subset the observations for the specific strata, i.e. observations whose propensity scores fall in the interval $(q_{j-1},q_j]$. We then split the subsetted data set into "treated" and "controlled" groups using the binary treatment indicator 'A'. For each group within the stratum, we calculate the summation over the multiplication of treatment indicator 'A' and outcome 'Y', and divide the sum by the number of individuals for each group. 
+Then the estimated ATE would be the summation over all K strata of the weighted sum of the difference on the "treated" and "controlled" groups as described above.
 
-Then the estimated ATE would be the summation over all K strata of the weighted sum of the difference of "treated" and "controlled" groups as described above.
-
+\medskip
 
 ```{r stratification_function}
 stratification = function(df, ps){
@@ -217,12 +235,12 @@ stratification = function(df, ps){
     curr.obs = df[which(stratum[j] < ps & ps <= stratum[j+1]),]
     
     # subset/select treatment and control groups
-    treatment_strata = curr.obs[curr.obs$A == 1,]
-    control_strata = curr.obs[curr.obs$A == 0,]
+    treatment = curr.obs[curr.obs$A == 1,]
+    control = curr.obs[curr.obs$A == 0,]
     
     # calculate sum within stratum
-    treatment_sum = sum(treatment_strata$A * treatment_strata$Y) / nrow(treatment_strata)
-    control_sum = sum((1 - control_strata$A) * control_strata$Y) / nrow(control_strata)
+    treatment_sum = sum(treatment$A * treatment$Y) / nrow(treatment)
+    control_sum = sum((1 - control$A) * control$Y) / nrow(control)
     ate_strata[j] = (nrow(curr.obs)/nrow(df)) * (treatment_sum - control_sum)
   }
   tm_end = Sys.time()
@@ -253,14 +271,14 @@ strata_low = stratification(lowDim, ps_low)
 * True ATE for Low Dimension Data Set: 2.0901
 
 
-```{r}
+```{r stratification_performance}
 true_ate_high = -54.8558
 true_ate_low = 2.0901
 cat("Performance for High Dimension Data is", abs(true_ate_high - strata_high[[1]]), "\n")
 cat("Performance for Low Dimension Data is", abs(true_ate_low - strata_low[[1]]))
 ```
 
-```{r}
+```{r stratification_result}
 res = matrix(rep(NA,4), ncol = 2)
 colnames(res) = c("Performance", "Computational Efficiency")
 rownames(res) = c("High Dimension", "Low Dimension")
@@ -271,7 +289,7 @@ res[2,2] = strata_low[[2]]
 res
 ```
 
-
+\bigskip
 
 
 # Weighted Regression
@@ -293,7 +311,9 @@ The weights are given by $\hat{\omega}(t,x) = \frac{t}{\hat{e}(x)} + \frac{1-t}{
 Then estimate $K$ linear regressions of type $Y_i = \beta_{k0} + \beta_{k1} \cdot T_i + \beta_{k 2} \cdot X_{ik} + \epsilon_i$ and then calculate the t-statistic for the test of null hypothesis that the slope $\beta_{k2}$is equal to zero. We select the subset where the t-statistic is significant. So select for $Z$ all covariates with a t-statistic which is larger in absolute value than $t_{reg}$. Then, in the final regression, include all covariates in this subset, and use the weights as the values $\hat{\omega}(t,x)$.
 
 
-```{r}
+\medskip
+
+```{r data_weighted_regression}
 #assign variables for data frame
 X_low <- data.matrix(lowDim[,-c(1,2)])
 A_low <- data.matrix(lowDim[,2])
@@ -330,9 +350,11 @@ Weighted_Regression <- function(X,A,df, threshold){
 }
 ```
 
+\medskip
+
 # Different Thresholds for Best ATE
 
-```{r}
+```{r thresholds}
 thresholds <- c(0.1, 0.05, 0.02, 0.01, 0.005)
 
 ate_scores_low <- rep(NA,length(thresholds))
@@ -355,29 +377,33 @@ for (t in thresholds) {
 
 Set threshold to the optimal value:
 
-```{r}
+```{r optimal_value}
 opt_low <- which.min(ate_scores_low)
 opt_high <- which.min(ate_scores_high)
 threshold_low <- thresholds[opt_low]
 threshold_high <- thresholds[opt_high]
 ```
 
-```{r}
+\medskip
+
+```{r wr_low}
 Weighted_Regression_low = Weighted_Regression(X_low,A_low,lowDim,threshold_low)
 ```
 
-```{r}
+```{r wr_high}
 Weighted_Regression_high = Weighted_Regression(X_high,A_high,highDim, threshold_high)
 ```
 
-```{r}
+```{r wr_performance}
 true_ate_high = -54.8558
 true_ate_low = 2.0901
-cat("Performance for High Dimension Data is", abs(true_ate_high - Weighted_Regression_high[[1]]), "\n")
-cat("Performance for Low Dimension Data is", abs(true_ate_low -Weighted_Regression_low[[1]]))
+cat("Performance for High Dimension Data is", 
+    abs(true_ate_high - Weighted_Regression_high[[1]]), "\n")
+cat("Performance for Low Dimension Data is", 
+    abs(true_ate_low -Weighted_Regression_low[[1]]))
 ```
 
-```{r}
+```{r wr_result}
 res = matrix(rep(NA,4), ncol = 2)
 colnames(res) = c("Performance", "Computational Efficiency")
 rownames(res) = c("High Dimension", "Low Dimension")
@@ -389,18 +415,22 @@ res
 ```
 
 
+\bigskip
+
 # Model Comparison
 
-Performance: absolute error of the true and estimated ATE
+**Performance**: absolute error of the true and estimated ATE
 
-Computational Efficiency: run time in seconds
+**Computational Efficiency**: run time in seconds
+
+\bigskip
 
 **High Dimension Dataset**
 
-```{r}
+```{r comparison_high}
 high = matrix(rep(NA,9), nrow = 3)
 rownames(high) = c("Stratification", "Regression Estimate", "Weighted Regression")
-colnames(high) = c("ATE", "Performance", "Computational Efficiency")
+colnames(high) = c("ATE", "Absolute Error", "Run Time")
 # stratification
 high[1,1] = strata_high[[1]]
 high[1,2] = abs(true_ate_high - strata_high[[1]])
@@ -417,13 +447,14 @@ high[3,3] = Weighted_Regression_high[[2]]
 high
 ```
 
+\bigskip
 
 **Low Dimension Dataset**
 
-```{r}
+```{r comparison_low}
 low = matrix(rep(NA,9), nrow = 3)
 rownames(low) = c("Stratification", "Regression Estimate", "Weighted Regression")
-colnames(low) = c("ATE", "Performance", "Computational Efficiency")
+colnames(low) = c("ATE", "Absolute Error", "Run Time")
 # stratification
 low[1,1] = strata_low[[1]]
 low[1,2] = abs(true_ate_low - strata_low[[1]])
@@ -440,8 +471,10 @@ low[3,3] = Weighted_Regression_low[[2]]
 low
 ```
 
+\bigskip
 
-```{r, fig.width=6, fig.height=2}
+
+```{r graph_high, fig.width=12, fig.height=5}
 high_perf = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
                        Performance = c(round(abs(true_ate_high - strata_high[[1]]), 3), 
                                        round(performance_high, 3), 
@@ -455,29 +488,17 @@ hp = ggplot(high_perf, aes(x = Model, y = Performance)) +
   geom_bar(stat = "identity", fill = c("light blue","orange","light blue")) +
   geom_text(aes(label=Performance), vjust = -0.5, size = 3.5) +
   labs(title = "Performance on High Dimension Data", y = "Absolute Error") +
-  #ylim(c(0,5)) +
   theme_clean()
 ht = ggplot(high_time, aes(x = Model, y = Time)) +
   geom_bar(stat = "identity", fill = c("light blue","orange","light blue")) +
   geom_text(aes(label=Time), vjust = -0.5, size = 3.5) +
   labs(title = "Computational Efficiency on High Dimension Data", y = "Run Time (in seconds)") +
-  #ylim(c(0,0.2)) +
   theme_clean()
 grid.arrange(hp, ht, ncol=2)
-
-# par(mfrow = c(1,2))
-# barplot(high_perf$Performance,
-#      main = "Performance on High Dimension Data",
-#      names.arg = high_perf$Model,
-#      ylab = "Absolute Error")
-# barplot(high_time$Time,  
-#      main = "Computational Efficiency on High Dimension Data", 
-#      names.arg = high_perf$Model,
-#      ylab = "Run Time (in seconds)")
 ```
 
 
-```{r, fig.width=6, fig.height=2}
+```{r graph_low, fig.width=12, fig.height=5}
 low_perf = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
                        Performance = c(round(abs(true_ate_low - strata_low[[1]]), 3), 
                                        round(performance_low, 3), 
@@ -491,13 +512,11 @@ lp = ggplot(low_perf, aes(x = Model, y = Performance)) +
   geom_bar(stat = "identity", fill = c("light blue","orange","light blue")) +
   geom_text(aes(label=Performance), vjust = -0.5, size = 3.5) +
   labs(title = "Performance on Low Dimension Data", y = "Absolute Error") +
-  #ylim(c(0,1)) +
   theme_clean()
 lt = ggplot(low_time, aes(x = Model, y = Time)) +
   geom_bar(stat = "identity", fill = c("light blue","orange","light blue")) +
   geom_text(aes(label=Time), vjust = -0.5, size = 3.5) +
   labs(title = "Computational Efficiency on Low Dimension Data", y = "Run Time (in seconds)") +
-  #ylim(c(0,0.2)) +
   theme_clean()
 grid.arrange(lp, lt, ncol=2)
 ```
