@@ -375,6 +375,28 @@ for (t in thresholds) {
 }
 ```
 
+Visualization
+
+```{r threshold comparasion}
+thresholds <- c(0.1, 0.05, 0.02, 0.01, 0.005)
+LD_ATE <- c(2.180446, 2.180446, 2.180446, 2.180446, 2.180446)
+HD_ATE <- c(-58.17327, -58.21078, -58.181, -57.85927, -57.8485)
+thre <- data.frame(thresholds, LD_ATE, HD_ATE)
+thre$thresholds <- as.factor(thre$thresholds)
+ggplot(data=thre, aes(x=thresholds, y=LD_ATE)) +
+  geom_bar(stat="identity", fill="lightblue") +
+  coord_cartesian(ylim=c(0,2.5)) +
+  geom_text(aes(label=LD_ATE),vjust=-0.5,size=3.5) +
+  geom_hline(yintercept=true_ate_low, linetype="dashed") +
+  geom_text(aes(0,true_ate_low,label="True ATE", vjust=-1, hjust="inward"))
+ggplot(data=thre, aes(x=thresholds, y=HD_ATE))+
+  geom_bar(stat="identity", fill="lightpink") +
+  coord_cartesian(ylim=c(-54.5,-58.5)) +
+  geom_text(aes(label=HD_ATE),vjust=-0.5,size=3.5) +
+  geom_hline(yintercept=true_ate_high,linetype="dashed")+
+  geom_text(aes(0,true_ate_high,label="True ATE", vjust=-1, hjust="inward"))
+```
+
 Set threshold to the optimal value:
 
 ```{r optimal_value}
