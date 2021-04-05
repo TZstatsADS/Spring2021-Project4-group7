@@ -543,7 +543,11 @@ lt = ggplot(low_time, aes(x = Model, y = Time)) +
 grid.arrange(lp, lt, ncol=2)
 ```
 
+# Conclusion
 
+In conclusion, we explored the three causal inference algorithms (Regression Estimate, Stratification,Weighted Regression with PS is based on L2 penalized logistic regression) on two data sets (low dimensional/ high dimensional) and computed the estimated ATE for each model. We evaluated the algorithms performance by calculating the absolute differences between the true ATE and estimated ATE and compare the computational efficiency by comparing the system run time.
+
+We identified the regression estimate has the best performance on both high dimensional and low dimensional data with the lowest absolute error with fast system run time in compare to the other algorithms. 
 
 # References
 
