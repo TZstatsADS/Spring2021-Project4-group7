@@ -7,14 +7,25 @@ Term: Spring 2021
 + Team 7
 + Projec title: Causal Inference Algorithm Implementation and Evaluation
 + Team members
-	+ Daizy Lam
-	+ Qiao Li
-	+ Chuanchuan Liu
-	+ Yingyao Wu
-	+ Serena Yuan
-+ Project summary: Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+	+ Daizy Lam 	<wl2744@columbia.edu>
+	+ Qiao Li	<ql2403@columbia.edu>
+	+ Chuanchuan Liu<cl4048@columbia.edu>
+	+ Yingyao Wu	<yw3659@columbia.edu>
+	+ Serena Yuan 	<sy2657@columbia.edu>
++ Project summary: 
+In this project,our goal is to compare Regression Estimate, Stratification, and Weighted Regression where PS is based on L2 penalized logistic regression.
+
+We implement and evaluate these three causal inference algorithms on treatment datasets (low dimensional/ high dimensional).
+
+Performances : ATE estimation, Running Time, absolute error are used to evaluate and compare the efficiency of the causal inference algorithms.
 	
-**Contribution statement**: [default] All team members contributed equally in all stages of this project. All team members approve our work presented in this GitHub repository including this contributions statement. 
+**Contribution statement**: 
+
++ Daizy Lam: 
++ Qiao Li: managed communications; **L2 penalized logistic regression**, Contributed to presenatation, Github ReadMes,Edited final report 
++ Chuanchuan Liu: 
++ Yingyao Wu: 
++ Serena Yuan: 
 
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
