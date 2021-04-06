@@ -30,6 +30,9 @@ library(gridExtra)
 
 # Introduction
 
+Firstly, we introduce the definition of causal effects. Suppose we have a random sample of size $N$ from a large population. For each unit $i$ in the random sample, we use $T_i\in\{0,1\}$ to denote whether the unit $i$ received the treatment of interest. Let $Y_i(0)$ indicates the outcome that the unit $i$ was under control while $Y_i(1)$ indicates the outcome under treatment. For unit $i$ the treatment effect is $Y_i(1) - Y_i(0)$. We are interested in the average effect of the treatment in the whole population (to simply the notation, we suppress subscript $i$ for unit):
+$$\Delta = E(Y_1 - Y_0) = E(Y_1) - E(Y_0)$$
+
 In this project,our goal is to compare Regression Estimate, Stratification, and Weighted Regression where PS is based on L2 penalized logistic regression.
 
 We implement and evaluate these three causal inference algorithms on treatment datasets (low dimensional/ high dimensional).
@@ -50,6 +53,8 @@ highDim <- read.csv("../data/highDim_dataset.csv")
 # Regression Estimate (with no need of propensity score)
 
 This algorithm builds regression model fit to control groups and treatment groups, and then makes predictions based on the model in order to calculate ATE.
+
+$$\hat \Delta(reg)=\frac{1}{N}\sum(\hat m_1(X_i)-\hat m_0(X_i))$$
 
 \medskip
 
