@@ -28,16 +28,15 @@ library(ggthemes)
 library(gridExtra)
 ```
 
-# Introduction
+# Causal Effects
 
-Firstly, we introduce the definition of causal effects. Suppose we have a random sample of size $N$ from a large population. For each unit $i$ in the random sample, we use $T_i\in\{0,1\}$ to denote whether the unit $i$ received the treatment of interest. Let $Y_i(0)$ indicates the outcome that the unit $i$ was under control while $Y_i(1)$ indicates the outcome under treatment. For unit $i$ the treatment effect is $Y_i(1) - Y_i(0)$. We are interested in the average effect of the treatment in the whole population (to simplify the notation, we suppress subscript $i$ for unit):
+Suppose we have a random sample of size $N$ from a large population. For each unit $i$ in the random sample, we use $T_i\in\{0,1\}$ to denote whether the unit $i$ received the treatment of interest. Let $Y_i(0)$ indicates the outcome that the unit $i$ was under control while $Y_i(1)$ indicates the outcome under treatment. For unit $i$ the treatment effect is $Y_i(1) - Y_i(0)$. We are interested in the average effect of the treatment in the whole population (to simplify the notation, we suppress subscript $i$ for unit):
+
 $$\Delta = E(Y_1 - Y_0) = E(Y_1) - E(Y_0)$$
 
-In this project,our goal is to compare Regression Estimate, Stratification, and Weighted Regression where PS is based on L2 penalized logistic regression.
+# Introduction
 
-We implement and evaluate these three causal inference algorithms on treatment datasets (low dimensional/ high dimensional).
-
-ATE estimation is used to evaluate and compare the efficiency of the causal inference algorithms.
+In this project, our goal is to compare Regression Estimate, Stratification, and Weighted Regression where PS is based on L2 penalized logistic regression. We implement and evaluate these three causal inference algorithms on treatment datasets (low dimensional/ high dimensional). ATE estimation is used to evaluate and compare the efficiency of the causal inference algorithms.
 
 \bigskip
 
@@ -472,11 +471,15 @@ data.frame(res)
 
 # Model Comparison
 
+For evaluating the performance of the three algorithms, we computed their absolute errors (absolute difference of the estimated and true ATEs), and for evaluating the computational efficiency we look at the system running time.
+
 **Performance**: absolute error of the true and estimated ATE
 
 **Computational Efficiency**: run time in seconds
 
 \bigskip
+
+## \underline{Results in Tables}
 
 **High Dimension Dataset**
 
@@ -530,6 +533,8 @@ low
 
 \bigskip
 
+## \underline{Results in Visualization}
+
 
 ```{r graph_high, fig.width=12, fig.height=5, echo=FALSE}
 high_perf = data.frame(Model = c("Stratification", "Regression Estimate", "Weighted Regression"),
@@ -582,7 +587,7 @@ grid.arrange(lp, lt, ncol=2)
 
 # Conclusion
 
-In conclusion, we explored the three causal inference algorithms (Regression Estimate, Stratification,Weighted Regression with PS is based on L2 penalized logistic regression) on two data sets (low dimensional/ high dimensional) and computed the estimated ATE for each model. We evaluated the algorithms performance by calculating the absolute differences between the true ATE and estimated ATE and compare the computational efficiency by comparing the system run time.
+In conclusion, we explored the three causal inference algorithms (Regression Estimate, Stratification and Weighted Regression with PS based on L2 penalized logistic regression) on two data sets (low dimensional/ high dimensional) and computed the estimated ATE for each model. We evaluated the algorithms performance by calculating the absolute differences between the true ATE and estimated ATE and compare the computational efficiency by comparing the system run time.
 
 We identified the regression estimate has the best performance on both high dimensional and low dimensional data with the lowest absolute error with fast system run time in compare to the other algorithms. 
 
@@ -592,3 +597,12 @@ D’Agostino, R. B. (1998). Propensity score methods for bias reduction in the c
 
 Lunceford, J. K.; Davidian, M. (2004). Stratification and weighting via the propensity score in estimation of causal treatment effects: A comparative study. Statistics in Medicine, 23(19), 2937-2960. doi:10.1002/sim.1903
 
+Friedman, Jerome, Trevor Hastie, and Rob Tibshirani. 2010. “Regularization Paths for Generalized Linear
+Models via Coordinate Descent.” Journal of Statistical Software 33 (1): 1.
+
+Hastie, Trevor, Robert Tibshirani, and Jerome Friedman. 2009. The Elements of Statistical Learning: Data
+Mining, Inference, and Prediction. Springer Science & Business Media.
+
+Westreich, Daniel, Justin Lessler, and Michele Jonsson Funk. 2010. “Propensity Score Estimation: Neural
+Networks, Support Vector Machines, Decision Trees (Cart), and Meta-Classifiers as Alternatives to Logistic
+Regression.” Journal of Clinical Epidemiology 63 (8): 826–33.
