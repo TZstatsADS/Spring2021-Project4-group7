@@ -431,7 +431,7 @@ threshold_high <- thresholds[opt_high]
 cat("The optimal threshold for the high dimensional data is", threshold_high, "\n")
 cat("The optimal threshold for the low dimensional data is", threshold_low, "\n")
 ```
-Therefore we choose these optimal thresholds in the following.
+Therefore we use these optimal thresholds in the following.
 
 \medskip
 
