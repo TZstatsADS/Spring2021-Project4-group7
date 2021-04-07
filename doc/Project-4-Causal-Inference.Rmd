@@ -367,6 +367,8 @@ Weighted_Regression <- function(X,A,df, threshold, ps){
 
 ## Different Thresholds for Best ATE
 
+We test various thresholds from 0.1 to 0.005 for which the t-statistic is significant or where the p-value is below this threshold. 
+
 ```{r thresholds, message=FALSE}
 thresholds <- c(0.1, 0.05, 0.02, 0.01, 0.005)
 
@@ -426,7 +428,10 @@ opt_low <- which.min(ate_scores_low)
 opt_high <- which.min(ate_scores_high)
 threshold_low <- thresholds[opt_low]
 threshold_high <- thresholds[opt_high]
+cat("The optimal threshold for the high dimensional data is", threshold_high, "\n")
+cat("The optimal threshold for the low dimensional data is", threshold_low, "\n")
 ```
+Therefore we choose these optimal thresholds in the following.
 
 \medskip
 
