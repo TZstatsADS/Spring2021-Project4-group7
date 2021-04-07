@@ -421,7 +421,9 @@ h <- ggplot(data=thre, aes(x=thresholds, y=HD_ATE))+
 grid.arrange(l, h, ncol = 2)
 ```
 
-Set threshold to the optimal value:
+\bigskip
+
+## Set Threshold to the Optimal Value:
 
 ```{r optimal_value}
 opt_low <- which.min(ate_scores_low)
@@ -431,9 +433,12 @@ threshold_high <- thresholds[opt_high]
 cat("The optimal threshold for the high dimensional data is", threshold_high, "\n")
 cat("The optimal threshold for the low dimensional data is", threshold_low, "\n")
 ```
+
 Therefore we use these optimal thresholds in the following.
 
 \medskip
+
+## Evaluation
 
 ```{r wr_low}
 Weighted_Regression_low = Weighted_Regression(X_low,A_low,lowDim,threshold_low, ps_low)
@@ -589,6 +594,10 @@ lt = ggplot(low_time, aes(x = Model, y = Time)) +
   theme_clean()
 grid.arrange(lp, lt, ncol=2)
 ```
+
+Running time in the graphs above are sums of algorithm running time and propensity score running time (0 for Regression Estimate), refer to the tables for exact running time values.
+
+\bigskip
 
 # Conclusion
 
