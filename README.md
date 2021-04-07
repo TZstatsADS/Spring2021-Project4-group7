@@ -20,7 +20,7 @@ In this project,our goal is to compare Regression Estimate, Stratification, and 
 	
 **Contribution statement**: All team members approve our work presented in this GitHub repository including this contributions statement. All team members attended all weekly meetings.
 
-+ Daizy Lam: 
++ Daizy Lam: Read all related articles and worked on the Weighted regression algorithm and wrote the summary conclusion. Attented all meetings and help with editing the final main rmd file. 
 
 + Qiao Li: managed communications; **L2 penalized logistic regression**, Contributed to presenatation, Github ReadMes,Edited final report 
 
