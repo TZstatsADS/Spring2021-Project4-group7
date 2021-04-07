@@ -24,7 +24,7 @@ In this project,our goal is to compare Regression Estimate, Stratification, and 
 
 + Qiao Li: managed communications; **L2 penalized logistic regression**, Contributed to presenatation, Github ReadMes,Edited final report 
 
-+ Chuanchuan Liu: 
++ Chuanchuan Liu: worked on the Regression Estimate algorithm (with no PS) and visualized the thresholds for ATE of Weighted Regression algorithm; help edit the final rmd and presentation file with other team members. 
 
 + Yingyao Wu:  Researched and implemented stratification—included brief explanation of the logic behind the algorithm and walked through the implementation step by step. Responsible for the model comparison section—created tables and graphs to compare results from the three algorithms. Organized and cleaned up the Rmd file.
 
